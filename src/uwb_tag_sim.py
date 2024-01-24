@@ -23,7 +23,6 @@ class UwbTagSim:
         # For each range measurement published we should also publish position of both tags 
         # to be able to 1) create visualizations 2) check if passive in range to both tags
 
-        # Need to keep track of a clock state and update in time with the simulation
         self.simulate_clock()
 
     def load_params(self):
@@ -49,10 +48,28 @@ class UwbTagSim:
         self.position = p + R.from_quat(q).apply(self.moment_arm, inverse=True)
 
     def simulate_clock(self):
-        offset = np.random.uniform(0, 1)
+        # TODO: should make most of these parameters user configurable
+        now = rospy.Time.now().to_sec()
+        self.offset = np.random.uniform(-0.5e8, 0.5e8) # ns
+        self.skew = np.random.uniform(-20e3, 20e3) # ppb
         rate = rospy.Rate(100)
-        # while not rospy.is_shutdown():
-        #     rospy.
-        #     t = rospy.Time.now().to_sec()
-        #     t += offset
-        #     rate.sleep()
+        Q_tau = 0.4 # ns^2
+        Q_gamma = 640 # ppb^2
+        while not rospy.is_shutdown():
+            # Get time delta
+            old = now
+            now = rospy.Time.now().to_sec()
+            dt = now - old
+            
+            # Generate noise
+            Qd = np.array([
+                [Q_tau * dt + Q_gamma * dt**3 / 3, Q_gamma * dt**2 / 2],
+                [Q_gamma * dt**2 / 2, Q_gamma * dt]
+            ])
+            noise = np.random.multivariate_normal([0, 0], Qd)
+            
+            # Update clock state
+            self.offset += self.skew * dt + noise[0]
+            self.skew += noise[1]
+
+            rate.sleep()
