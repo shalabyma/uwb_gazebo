@@ -1,57 +1,60 @@
-<node name="anchor0" pkg="uwb_gazebo" type="uwb_tag_sim.py" output="screen">
-       <param name="id" value="0" /> 
-       <param name="static" value="True" /> 
-       <!-- The position of the anchors in the world frame -->
-       <param name="x" value="-7.0" />
-       <param name="y" value="3.75" />
-       <param name="z" value="2.0" />
-</node>
+<launch>
+       <arg name="uwb_range" default="5" />
 
-<node name="anchor1" pkg="uwb_gazebo" type="uwb_tag_sim.py" output="screen">
-       <param name="id" value="1" /> 
-       <param name="static" value="True" /> 
-       <!-- The position of the anchors in the world frame -->
-       <param name="x" value="3.5" />
-       <param name="y" value="-2.5" />
-       <param name="z" value="2.0" />
-</node>
+       <node name="anchor0" pkg="uwb_gazebo" type="uwb_tag_sim.py" output="screen">
+              <param name="id" value="0" /> 
+              <param name="static" value="True" /> 
+              <!-- The position of the anchors in the world frame -->
+              <param name="x" value="-7.0" />
+              <param name="y" value="3.75" />
+              <param name="z" value="2.0" />
+       </node>
 
-<node name="tag10" pkg="uwb_gazebo" type="uwb_tag_sim.py" output="screen">
-       <param name="id" value="10" /> 
-       <param name="static" value="False" /> 
-       <param name="robot_pose_topic" value="/husky/pose" />
-       <!-- These now represent moment arm in body frame of Husky -->
-       <param name="x" value="0.3" /> 
-       <param name="y" value="0.3" />
-       <param name="z" value="0.2" />
-</node>
+       <node name="anchor1" pkg="uwb_gazebo" type="uwb_tag_sim.py" output="screen">
+              <param name="id" value="1" /> 
+              <param name="static" value="True" /> 
+              <!-- The position of the anchors in the world frame -->
+              <param name="x" value="3.5" />
+              <param name="y" value="-2.5" />
+              <param name="z" value="2.0" />
+       </node>
 
-<node name="tag11" pkg="uwb_gazebo" type="uwb_tag_sim.py" output="screen">
-       <param name="id" value="11" /> 
-       <param name="static" value="False" /> 
-       <param name="robot_pose_topic" value="/husky/pose" />
-       <!-- These now represent moment arm in body frame of Husky -->
-       <param name="x" value="-0.3" /> 
-       <param name="y" value="0.3" />
-       <param name="z" value="0.2" />
-</node>
+       <node name="tag10" pkg="uwb_gazebo" type="uwb_tag_sim.py" output="screen">
+              <param name="id" value="10" /> 
+              <param name="static" value="False" /> 
+              <param name="robot_pose_topic" value="/husky/pose" />
+              <!-- These now represent moment arm in body frame of Husky -->
+              <param name="x" value="0.3" /> 
+              <param name="y" value="0.3" />
+              <param name="z" value="0.2" />
+       </node>
 
-<node name="tag12" pkg="uwb_gazebo" type="uwb_tag_sim.py" output="screen">
-       <param name="id" value="12" /> 
-       <param name="static" value="False" /> 
-       <param name="robot_pose_topic" value="/husky/pose" />
-       <!-- These now represent moment arm in body frame of Husky -->
-       <param name="x" value="0.3" /> 
-       <param name="y" value="-0.3" />
-       <param name="z" value="0.2" />
-</node>
+       <node name="tag11" pkg="uwb_gazebo" type="uwb_tag_sim.py" output="screen">
+              <param name="id" value="11" /> 
+              <param name="static" value="False" /> 
+              <param name="robot_pose_topic" value="/husky/pose" />
+              <!-- These now represent moment arm in body frame of Husky -->
+              <param name="x" value="-0.3" /> 
+              <param name="y" value="0.3" />
+              <param name="z" value="0.2" />
+       </node>
 
-<node name="tag13" pkg="uwb_gazebo" type="uwb_tag_sim.py" output="screen">
-       <param name="id" value="13" /> 
-       <param name="static" value="False" /> 
-       <param name="robot_pose_topic" value="/husky/pose" />
-       <!-- These now represent moment arm in body frame of Husky -->
-       <param name="x" value="-0.3" /> 
-       <param name="y" value="-0.3" />
-       <param name="z" value="0.2" />
-</node>
+       <node name="tag12" pkg="uwb_gazebo" type="uwb_tag_sim.py" output="screen">
+              <param name="id" value="12" /> 
+              <param name="static" value="False" /> 
+              <param name="robot_pose_topic" value="/husky/pose" />
+              <!-- These now represent moment arm in body frame of Husky -->
+              <param name="x" value="0.3" /> 
+              <param name="y" value="-0.3" />
+              <param name="z" value="0.2" />
+       </node>
+
+       <node name="tag13" pkg="uwb_gazebo" type="uwb_tag_sim.py" output="screen">
+              <param name="id" value="13" /> 
+              <param name="static" value="False" /> 
+              <param name="robot_pose_topic" value="/husky/pose" />
+              <!-- These now represent moment arm in body frame of Husky -->
+              <param name="x" value="-0.3" /> 
+              <param name="y" value="-0.3" />
+              <param name="z" value="0.2" />
+       </node>

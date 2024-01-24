@@ -3,6 +3,7 @@ from uwb_msgs.msg import RangeStamped, PassiveStamped
 from geometry_msgs.msg import PoseStamped
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+from utils import is_in_range
 
 class UwbTagSim:
     def __init__(self):
@@ -26,6 +27,7 @@ class UwbTagSim:
         self.simulate_clock()
 
     def load_params(self):
+        self.uwb_range = rospy.get_param('/uwb_range')
         self.tag_id = rospy.get_param(self.node_name + '/tag_id')
         self.is_static = rospy.get_param(self.node_name + '/static')
         x = rospy.get_param(self.node_name + '/x')
@@ -36,10 +38,6 @@ class UwbTagSim:
             self.moment_arm = np.array([x, y, z])
         else:
             self.position = np.array([x, y, z])
-
-    def is_in_range(self):
-        # TODO: In the future, include obstacles when deciding if tags within range
-        pass
 
     def robot_pose_cb(self, msg):
         q = msg.pose.orientation
