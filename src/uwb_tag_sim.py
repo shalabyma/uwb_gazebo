@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import rospy
 from uwb_msgs.msg import RangeStamped, PassiveStamped, TagsStateStamped
 from geometry_msgs.msg import PoseStamped
@@ -9,14 +10,16 @@ from uwb_msgs.srv import InitiateTwr, InitiateTwrRequest, InitiateTwrResponse
 
 class UwbTagSim:
     def __init__(self):
-        rospy.init_node()
+        rospy.init_node("tag")
         self.node_name = rospy.get_name()
+
+        # rospy.loginfo("Initializing UWB tag sim node...")
 
         self.load_params()
 
         # TODO: do I need to assign this to a variable?
-        rospy.Service("range_with_" + self.tag_id, Range, self.handle_range)
-        rospy.Service("initiate_from_" + self.tag_id, InitiateTwr, self.handle_initiate)
+        rospy.Service("range_with_" + str(self.tag_id), Range, self.handle_range)
+        rospy.Service("initiate_from_" + str(self.tag_id), InitiateTwr, self.handle_initiate)
         
         # Publisher for the position of the two ranging tags
         self.tags_state_pub = rospy.Publisher("tags_state", TagsStateStamped, queue_size=10)
@@ -27,12 +30,11 @@ class UwbTagSim:
         # Publisher for passive listening measurements
         self.passive_pub = rospy.Publisher("/uwb/passive", PassiveStamped, queue_size=10)
 
-
         self.range_srvs = {
-            tag: rospy.ServiceProxy("range_with_" + tag, Range) for tag in self.list_of_tags
+            tag: rospy.ServiceProxy("range_with_" + str(tag), Range) for tag in self.list_of_tags
         }
 
-        if (self.robot_pose_topic):
+        if hasattr(self, "robot_pose_topic"):
             rospy.Subscriber(self.robot_pose_topic, PoseStamped, self.robot_pose_cb)
 
         # Subscribe to the range measurements of other tags
@@ -42,19 +44,21 @@ class UwbTagSim:
         self.ranging_tags_state = TagsStateStamped()
         rospy.Subscriber("tags_state", TagsStateStamped, self.tags_state_cb)
 
+        # rospy.loginfo("UWB tag sim node initialized!")
+
         self.simulate_clock()
 
     def load_params(self):
         self.range_topic = rospy.get_param('/range_topic')
-        self.uwb_range = rospy.get_param('/uwb_range')
-        self.list_of_tags = rospy.get_param('/list_of_tags')
-        self.tag_id = rospy.get_param(self.node_name + '/tag_id')
+        self.max_range = rospy.get_param('/max_range')
+        self.list_of_tags = eval(rospy.get_param('/list_of_tags'))
+        self.tag_id = rospy.get_param(self.node_name + '/id')
         self.is_static = rospy.get_param(self.node_name + '/static')
         x = rospy.get_param(self.node_name + '/x')
         y = rospy.get_param(self.node_name + '/y')
         z = rospy.get_param(self.node_name + '/z')
-        self.robot_pose_topic = rospy.get_param(self.node_name + '/robot_pose_topic')
-        if (self.robot_pose_topic):
+        if rospy.has_param(self.node_name + '/robot_pose_topic'):
+            self.robot_pose_topic = rospy.get_param(self.node_name + '/robot_pose_topic')
             self.moment_arm = np.array([x, y, z])
         else:
             self.position = np.array([x, y, z])
@@ -62,16 +66,15 @@ class UwbTagSim:
     def handle_range(self, req: RangeRequest):
         # TODO: Add noise as a user configurable parameter
         # TODO: make \Delta t^{32} and \Delta t^{53} user configurable parameters
-        if is_in_range(self.position, req.position):
+        if is_in_range(self.position, req.position, self.max_range):
             # Create range message and timestamp it
             range_msg = RangeStamped()
             range_msg.header.stamp = rospy.Time.now()
             
             # Compute range data
             range_data = compute_range_data(
-                range_msg.header.stamp.to_nsec(),
                 {'position': self.position, 'offset': self.offset, 'skew': self.skew},
-                {'position': np.array(req.position), 'offset': req.offset, 'skew': req.skew},
+                {'position': req.position, 'offset': req.offset, 'skew': req.skew},
                 del_t_32 = 300*1e3,
                 del_t_53 = 1500*1e3,
             )
@@ -90,15 +93,15 @@ class UwbTagSim:
             self.tags_state_pub.publish(tags_state_msg)
     
             # Return range data        
-            range_msg.range = range_data.range
+            range_msg.range = range_data['range']
             range_msg.from_id = req.id
             range_msg.to_id = self.tag_id
-            range_msg.tx1 = range_data.tx1
-            range_msg.rx1 = range_data.rx1
-            range_msg.tx2 = range_data.tx2
-            range_msg.rx2 = range_data.rx2
-            range_msg.tx3 = range_data.tx3
-            range_msg.rx3 = range_data.rx3
+            range_msg.tx1 = range_data['tx1']
+            range_msg.rx1 = range_data['rx1']
+            range_msg.tx2 = range_data['tx2']
+            range_msg.rx2 = range_data['rx2']
+            range_msg.tx3 = range_data['tx3']
+            range_msg.rx3 = range_data['rx3']
             
             self.range_pub.publish(range_msg)
 
@@ -107,10 +110,10 @@ class UwbTagSim:
         return RangeResponse(False)
     
     def handle_initiate(self, req: InitiateTwrRequest):
-        self.range_srvs[req.target_id](
-            self.position, self.offset, self.skew
+        output = self.range_srvs[req.target_id](
+            self.tag_id, self.offset, self.skew, self.position
         )
-        return InitiateTwrResponse(True)
+        return InitiateTwrResponse(output.success)
 
     def robot_pose_cb(self, msg: PoseStamped):
         q = msg.pose.orientation
@@ -118,30 +121,32 @@ class UwbTagSim:
         p = msg.pose.position
         p = np.array([p.x, p.y, p.z])
 
-        rospy.loginfo("TODO: SHOULD CHECK THIS! USED INVERSE")
+        # TODO: SHOULD CHECK THIS! USED INVERSE
         self.position = p + R.from_quat(q).apply(self.moment_arm, inverse=True)
 
     def range_cb(self, msg: RangeStamped):
         if (msg.from_id == self.tag_id or msg.to_id == self.tag_id):
             return
         
-        # Check if range message and position of ranging tags have same timestamp
-        if (msg.header.stamp != self.ranging_tags_state.header.stamp):
-            rospy.logwarn("Missed a passive listening measurement!")
-            return
-        
         # Check if the ranging tags are in range
         if (not is_in_range(
                 self.position, 
-                self.ranging_tags_state.target_pos
+                self.ranging_tags_state.target_pos,
+                self.max_range
             )
         ):
             return
         if (not is_in_range(
                 self.position, 
-                self.ranging_tags_state.initiator_pos
+                self.ranging_tags_state.initiator_pos,
+                self.max_range
             )
         ):
+            return
+        
+        # Check if range message and position of ranging tags have same timestamp
+        if (msg.header.stamp != self.ranging_tags_state.header.stamp):
+            rospy.logwarn("Missed a passive listening measurement!")
             return
 
 
@@ -159,14 +164,13 @@ class UwbTagSim:
         passive_msg.rx3_n = msg.rx3
 
         passive_ts = compute_passive_data(
-            passive_msg.header.stamp.to_nsec(),
             {
-                'position': self.ranging_tags_state.initiator_pos, 
+                'position': np.array(self.ranging_tags_state.initiator_pos), 
                 'offset': self.ranging_tags_state.initiator_offset, 
                 'skew': self.ranging_tags_state.initiator_skew
             },
             {
-                'position': self.ranging_tags_state.target_pos, 
+                'position': np.array(self.ranging_tags_state.target_pos), 
                 'offset': self.ranging_tags_state.target_offset, 
                 'skew': self.ranging_tags_state.target_skew
             },
@@ -218,3 +222,7 @@ class UwbTagSim:
             self.skew += noise[1]
 
             rate.sleep()
+
+if __name__ == "__main__":
+    UwbTagSim()
+    rospy.spin()

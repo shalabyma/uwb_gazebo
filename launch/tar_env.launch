@@ -1,15 +1,15 @@
 <launch>
-       <arg name="uwb_range" default="8" />
-       <arg name="range_topic" default="/uwb/range" />
+       <param name="max_range" value="8" />
+       <param name="range_topic" value="/uwb/range" />
        <!-- This should be moved to a yaml file -->
-       <arg name="list_of_tags" default="0,1,10,11,12,13" />
+       <param name="list_of_tags" value="[0,1,10,11,12,13]" />
 
        <node name="anchor0" pkg="uwb_gazebo" type="uwb_tag_sim.py" output="screen">
               <param name="id" value="0" /> 
               <param name="static" value="True" /> 
               <!-- The position of the anchors in the world frame -->
-              <param name="x" value="-7.0" />
-              <param name="y" value="3.75" />
+              <param name="x" value="-1.0" />
+              <param name="y" value="1.75" />
               <param name="z" value="2.0" />
        </node>
 
@@ -17,8 +17,8 @@
               <param name="id" value="1" /> 
               <param name="static" value="True" /> 
               <!-- The position of the anchors in the world frame -->
-              <param name="x" value="3.5" />
-              <param name="y" value="-2.5" />
+              <param name="x" value="-3.5" />
+              <param name="y" value="-1.5" />
               <param name="z" value="2.0" />
        </node>
 
@@ -61,3 +61,4 @@
               <param name="y" value="-0.3" />
               <param name="z" value="0.2" />
        </node>
+</launch>
