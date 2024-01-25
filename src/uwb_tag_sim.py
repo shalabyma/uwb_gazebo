@@ -1,10 +1,11 @@
 import rospy
-from uwb_msgs.msg import RangeStamped, PassiveStamped
+from uwb_msgs.msg import RangeStamped, PassiveStamped, TagsPositionStamped
 from geometry_msgs.msg import PoseStamped
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-from utils import is_in_range
+from utils import is_in_range, compute_range_data
 from uwb_msgs.srv import Range, RangeRequest, RangeResponse
+from uwb_msgs.srv import InitiateTwr, InitiateTwrRequest, InitiateTwrResponse
 
 class UwbTagSim:
     def __init__(self):
@@ -15,44 +16,68 @@ class UwbTagSim:
 
         # TODO: do I need to assign this to a variable?
         rospy.Service("range_with_" + self.tag_id, Range, self.handle_range)
+        rospy.Service("initiate_from_" + self.tag_id, InitiateTwr, self.handle_initiate)
+        
+        # Publisher for the position of the two ranging tags
+        self.tags_position_pub = rospy.Publisher("tags_position", TagsPositionStamped, queue_size=10)
 
-        range_srvs = {
+        self.range_srvs = {
             tag: rospy.ServiceProxy("range_with_" + tag, Range) for tag in self.list_of_tags
         }
 
-        # TODO: NEED TO ADD ANOTHER SERVER FOR THE INITIATION OF TWR TRANSACTIONS
-
         if (self.robot_pose_topic):
             rospy.Subscriber(self.robot_pose_topic, PoseStamped, self.robot_pose_cb)
-
-        # Need to create service to be a target for a TWR transaction (in which we check if in range)
-        # and a different service to initiate TWR transactions
         
         # Need to generate passive listening measurements (where we also check if in range), by
         # subscribing to the range measurements of other tags
 
-        # For each range measurement published we should also publish position of both tags 
-        # to be able to 1) create visualizations 2) check if passive in range to both tags
-
         self.simulate_clock()
 
     def handle_range(self, req: RangeRequest):
-        msg = RangeStamped()
-        msg.header.stamp = rospy.Time.now()
-        msg.range = None # TODO
-        msg.from_id = req.id
-        msg.to_id = self.tag_id
-        msg.tx1 = None # TODO
-        msg.rx1 = None # TODO
-        msg.tx2 = None # TODO
-        msg.rx2 = None # TODO
-        msg.tx3 = None # TODO
-        msg.rx3 = None # TODO
-        msg.fpp1 = 0
-        msg.fpp2 = 0
-        msg.skew1 = 0
-        msg.skew2 = 0
-        return msg
+        # TODO: Add noise as a user configurable parameter
+        # TODO: make \Delta t^{32} and \Delta t^{53} user configurable parameters
+        if is_in_range(self.position, req.position):
+            # Create range message and timestamp it
+            range_msg = RangeStamped()
+            range_msg.header.stamp = rospy.Time.now()
+            
+            # Compute range data
+            range_data = compute_range_data(
+                range_msg.header.stamp.to_nsec(),
+                {'position': self.position, 'offset': self.offset, 'skew': self.skew},
+                {'position': np.array(req.position), 'offset': req.offset, 'skew': req.skew},
+                del_t_32 = 300*1e3,
+                del_t_53 = 1500*1e3,
+            )
+            
+            # Publish position of both tags
+            tags_pos_msg = TagsPositionStamped()
+            tags_pos_msg.header.stamp = range_msg.header.stamp
+            tags_pos_msg.initiator_id = req.id
+            tags_pos_msg.initiator_pos = req.position
+            tags_pos_msg.target_id = self.tag_id
+            tags_pos_msg.target_pos = self.position
+            self.tags_position_pub.publish(tags_pos_msg)
+    
+            # Return range data        
+            range_msg.range = range_data.range
+            range_msg.from_id = req.id
+            range_msg.to_id = self.tag_id
+            range_msg.tx1 = range_data.tx1
+            range_msg.rx1 = range_data.rx1
+            range_msg.tx2 = range_data.tx2
+            range_msg.rx2 = range_data.rx2
+            range_msg.tx3 = range_data.tx3
+            range_msg.rx3 = range_data.rx3
+            return RangeResponse(range_msg)
+        else:
+            return None
+    
+    def handle_initiate(self, req: InitiateTwrRequest):
+        self.range_srvs[req.target_id](
+            self.position, self.offset, self.skew
+        )
+        return InitiateTwrResponse(True)
 
     def load_params(self):
         self.uwb_range = rospy.get_param('/uwb_range')
