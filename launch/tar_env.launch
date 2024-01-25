@@ -1,5 +1,6 @@
 <launch>
-       <arg name="uwb_range" default="5" />
+       <arg name="uwb_range" default="8" />
+       <arg name="range_topic" default="/uwb/range" />
        <!-- This should be moved to a yaml file -->
        <arg name="list_of_tags" default="0,1,10,11,12,13" />
 
