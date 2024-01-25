@@ -17,8 +17,8 @@ def compute_range_data(
     rx1 = time + tag1['offset'] + tof
     tx2 = time + tag1['offset'] + tof + (1 + tag1['skew']) * del_t_32
     rx2 = time + tag0['offset'] + 2*tof + (1 + tag0['skew']) * del_t_32
-    tx3 = time + tag1['offset'] + tof + (1 + tag1['skew']) * del_t_53
-    rx3 = time + tag0['offset'] + 2*tof + (1 + tag0['skew']) * del_t_53
+    tx3 = time + tag1['offset'] + tof + (1 + tag1['skew']) * (del_t_32 + del_t_53)
+    rx3 = time + tag0['offset'] + 2*tof + (1 + tag0['skew']) * (del_t_32 + del_t_53)
     
     # Shalaby's double-sided two-way ranging protocol
     range = 0.5 * c / 1e9 * (
