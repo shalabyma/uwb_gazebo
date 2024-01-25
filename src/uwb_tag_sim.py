@@ -4,6 +4,7 @@ from geometry_msgs.msg import PoseStamped
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 from utils import is_in_range
+from uwb_msgs.srv import Range, RangeRequest, RangeResponse
 
 class UwbTagSim:
     def __init__(self):
@@ -12,21 +13,50 @@ class UwbTagSim:
 
         self.load_params()
 
+        # TODO: do I need to assign this to a variable?
+        rospy.Service("range_with_" + self.tag_id, Range, self.handle_range)
+
+        range_srvs = {
+            tag: rospy.ServiceProxy("range_with_" + tag, Range) for tag in self.list_of_tags
+        }
+
+        # TODO: NEED TO ADD ANOTHER SERVER FOR THE INITIATION OF TWR TRANSACTIONS
+
         if (self.robot_pose_topic):
             rospy.Subscriber(self.robot_pose_topic, PoseStamped, self.robot_pose_cb)
 
         # Need to create service to be a target for a TWR transaction (in which we check if in range)
         # and a different service to initiate TWR transactions
         
-        # Need to generate passive listening measurements (where we also check if in range)
+        # Need to generate passive listening measurements (where we also check if in range), by
+        # subscribing to the range measurements of other tags
 
         # For each range measurement published we should also publish position of both tags 
         # to be able to 1) create visualizations 2) check if passive in range to both tags
 
         self.simulate_clock()
 
+    def handle_range(self, req: RangeRequest):
+        msg = RangeStamped()
+        msg.header.stamp = rospy.Time.now()
+        msg.range = None # TODO
+        msg.from_id = req.id
+        msg.to_id = self.tag_id
+        msg.tx1 = None # TODO
+        msg.rx1 = None # TODO
+        msg.tx2 = None # TODO
+        msg.rx2 = None # TODO
+        msg.tx3 = None # TODO
+        msg.rx3 = None # TODO
+        msg.fpp1 = 0
+        msg.fpp2 = 0
+        msg.skew1 = 0
+        msg.skew2 = 0
+        return msg
+
     def load_params(self):
         self.uwb_range = rospy.get_param('/uwb_range')
+        self.list_of_tags = rospy.get_param('/list_of_tags')
         self.tag_id = rospy.get_param(self.node_name + '/tag_id')
         self.is_static = rospy.get_param(self.node_name + '/static')
         x = rospy.get_param(self.node_name + '/x')
